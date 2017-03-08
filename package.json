@@ -1,0 +1,21 @@
+{
+  "name": "fluxo-api",
+  "version": "1.0.0",
+  "description": "Api for Fluxo, a Kanban dashboard for Trello Boards",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Hugo Häggmark",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.17.0",
+    "cookie-session": "^2.0.0-alpha.2",
+    "cors": "^2.8.1",
+    "express": "^4.14.0",
+    "helmet": "^3.4.1",
+    "node-cache": "^4.1.1",
+    "oauth": "^0.9.15",
+    "querystring": "^0.2.0"
+  }
+}
