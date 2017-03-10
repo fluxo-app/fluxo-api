@@ -8,7 +8,7 @@ const cors = require('./middlewares/cors')
 const app = express()
 app.use(helmet())
 app.use(bodyParser.json())
-app.use(cors(["http://localhost:3000", "https://fluxo-app.github.io"]))
+app.use(cors(["http://localhost:3000", "https://fluxo-app.github.io", "https://fluxo.hugohaggmark.com"]))
 app.use(session({
   name: "fluxov2",
   secret: "skjghskdjfasjdkiismmajjshbqigohqdiouk",
