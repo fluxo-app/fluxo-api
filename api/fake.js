@@ -47,16 +47,4 @@ router.get("/lists/:listid", (req, res) => {
   res.status(200).json(fake)
 })
 
-router.get("/cards/:cardid", (req, res) => {
-  // doTrelloRequest("https://trello.com/1/cards/" + req.params.cardid + "/actions/?filter=createCard,updateCard:idList", req, res)
-})
-
-router.get("/lists/:listid", (req, res) => {
-  // doTrelloRequest("https://trello.com/1/lists/" + req.params.listid + "/cards/?actions=updateCard:idList,createCard,copyCard,convertToCardFromCheckItem&filter=all&fields=name,labels,actions", req, res)
-})
-
-router.get("/cards/:cardid", (req, res) => {
-  // doTrelloRequest("https://trello.com/1/cards/" + req.params.cardid + "/actions/?filter=createCard,updateCard:idList", req, res)
-})
-
 module.exports = router

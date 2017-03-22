@@ -1,60 +1,89 @@
 const express = require('express')
 const router = express.Router()
-const requireTrelloToken = require('../middlewares/requireTrelloToken')
 const settings = require('../settings')
 const NodeCache = require("node-cache")
-const fluxoCache = new NodeCache({stdTTL: 300, checkperiod: 30})
-const oauthHelper = require('../oauthHelper')
+const resourceCache = new NodeCache({stdTTL: 300, checkperiod: 30})
+const jwt = require('jsonwebtoken')
 
-const getCacheKey = (resourceUrl, oauth_access_token, oauth_access_token_secret) => {
-  return `${resourceUrl}|${oauth_access_token}|${oauth_access_token_secret}`
-}
+const getTokenFromRequest = (req) => {
+  if (req.query.token) {
+    return req.query.token
+  }
 
-const doTrelloRequest = (resourceUrl, req, res) => {
-  const key = getCacheKey(resourceUrl, req.session.oauth_access_token, req.session.oauth_access_token_secret)
-  let resource = fluxoCache.get(key)
-  if (resource) {
-    res
-      .status(200)
-      .json(resource)
-  } else {
-    const oa = oauthHelper.getOAuthFromRequest(req)
-    oa.getProtectedResource(resourceUrl, "GET", req.session.oauth_access_token, req.session.oauth_access_token_secret, (error, data, response) => {
-      if (error) {
-        return res
-          .status(500)
-          .json(error)
-          .end()
-      }
-      resource = JSON.parse(data)
-      fluxoCache.set(key, resource)
-      res
-        .status(200)
-        .json(resource)
-    })
+  const authorization = req.headers['authorization']
+  if (authorization) {
+    return authorization.replace('Bearer ', '')
   }
 }
 
-router.use(requireTrelloToken)
+router.use((req, res, next) => {
+  const token = getTokenFromRequest(req)
+  try {
+    const decoded = jwt.verify(token, settings.appSecret)
+    req.oauth_access_token = decoded.accessToken
+    req.oauth_access_token_secret = decoded.accessTokenSecret
+  } catch(err) {
+    return res.status(401).send({
+      signInUrl: `${settings.appUrl}/oauth/login`
+    })
+  }
+  return next()
+})
+
+const getProtectedTrelloResource = (resourceUrl, req) => {
+  const accessToken = req.oauth_access_token
+  const accessTokenSecret = req.oauth_access_token_secret
+  const cacheKey = `${resourceUrl}|${accessToken}|${accessTokenSecret}`
+
+  return new Promise((resolve, reject) => {
+    const cachedResource = resourceCache.get(cacheKey)
+    if (cachedResource) {
+      return resolve({
+        statusCode: 200,
+        resource: cachedResource
+      })
+    }
+
+    settings.oauth.getProtectedResource(resourceUrl,
+      "GET",
+      accessToken,
+      accessTokenSecret,
+      (error, data, response) => {
+        if (error) {
+          return resolve({
+            statusCode: error.statusCode,
+            resource: {message:error.data}
+          })
+        }
+
+        const json = JSON.parse(data)
+        resourceCache.set(cacheKey, json)
+        return resolve({
+          statusCode: 200,
+          resource: json
+        })
+      })
+  })
+}
 
 router.get("/me", (req, res) => {
-  doTrelloRequest("https://api.trello.com/1/members/me", req, res)
+  getProtectedTrelloResource('https://api.trello.com/1/members/me', req)
+    .then(response => res.status(response.statusCode).send(response.resource))
 })
 
 router.get("/my/boards", (req, res) => {
-  doTrelloRequest("https://trello.com/1/members/my/boards", req, res)
+  getProtectedTrelloResource('https://trello.com/1/members/my/boards', req)
+    .then(response => res.status(response.statusCode).send(response.resource))
 })
 
 router.get("/boards/:boardid/lists", (req, res) => {
-  doTrelloRequest("https://trello.com/1/boards/" + req.params.boardid + "/lists", req, res)
+  getProtectedTrelloResource(`https://trello.com/1/boards/${req.params.boardid}/lists`, req)
+    .then(response => res.status(response.statusCode).send(response.resource))
 })
 
 router.get("/lists/:listid", (req, res) => {
-  doTrelloRequest("https://trello.com/1/lists/" + req.params.listid + "/cards/?actions=updateCard:idList,createCard,copyCard,convertToCardFromCheckItem&filter=all&fields=name,labels,actions", req, res)
-})
-
-router.get("/cards/:cardid", (req, res) => {
-  doTrelloRequest("https://trello.com/1/cards/" + req.params.cardid + "/actions/?filter=createCard,updateCard:idList", req, res)
+  getProtectedTrelloResource(`https://trello.com/1/lists/${req.params.listid}//cards/?actions=updateCard:idList,createCard,copyCard,convertToCardFromCheckItem&filter=all&fields=name,labels,actions`, req)
+    .then(response => res.status(response.statusCode).send(response.resource))
 })
 
 module.exports = router
