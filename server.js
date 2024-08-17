@@ -7,7 +7,7 @@ const cors = require('./middlewares/cors')
 const app = express()
 app.use(helmet())
 app.use(bodyParser.json())
-app.use(cors(["http://localhost:3000", "https://fluxo-app.github.io", "https://fluxo.hugohaggmark.com"]))
+app.use(cors(["http://localhost:3000", "https://fluxo-app.github.io", "https://fluxo.hugohaggmark.com", "https://fluxo-api.onrender.com/"]))
 
 app.get('/', (req, res) => {
   return res
